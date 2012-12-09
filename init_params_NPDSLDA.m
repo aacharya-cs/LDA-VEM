@@ -1,4 +1,4 @@
-function [model, data] = init_params_NPDSLDA(data, K1, T, option)
+function [model, data] = init_params_NPDSLDA(data, K1, T, option, svmcval)
 
 %% random Initialization of model and variational parameters
 model.N        = size(data.wcount,2);
@@ -9,7 +9,7 @@ model.K2       = data.k1; %% number of supervised and latent topics flipped
 model.epsilon  = 0.8;     %% weight of supervised topics
 model.phase    = 1;
 model.C1       = 1;
-model.C2       = 2;
+model.C2       = svmcval;
 model.MINVALUE = 1e-50;
 
 %% model parameters

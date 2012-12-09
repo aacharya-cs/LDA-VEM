@@ -1,11 +1,11 @@
-function [model, perfval] = variational_EM_NPDSLDA (data, MAXCOUNT, MAXESTEPITER, MAXMSTEPITER, MaxFun,  p, K1, T, option)
+function [model, perfval] = variational_EM_NPDSLDA (data, MAXCOUNT, MAXESTEPITER, MAXMSTEPITER, MaxFun,  p, K1, T, option, svmcval)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % main code for running variational EM on NPDSLDA model
 % @ Ayan Acharya, Date: 11.07.2012
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-[model, data] = init_params_NPDSLDA(data, K1, T, option);
+[model, data] = init_params_NPDSLDA(data, K1, T, option, svmcval);
 countVEM = 1;
 maxvalue = -1e50;
 

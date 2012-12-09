@@ -1,11 +1,11 @@
-function [model, perfval] = variational_EM (data, MAXCOUNT, MAXESTEPITER, MAXMSTEPITER, MaxFun,  p, K, option, phase, model)
+function [model, perfval] = variational_EM (data, MAXCOUNT, MAXESTEPITER, MAXMSTEPITER, MaxFun,  p, K, option, phase, model, epsilon, svmcval)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % main code for running variational EM on the proposed model
 % @ Ayan Acharya, Date: 05.28.2012
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-model    = init_params(data, K, data.V, p, option, 1);
+model    = init_params(data, K, data.V, p, option, 1, epsilon, svmcval);
 countVEM = 1;
 maxvalue = -100000000000000000000;
 

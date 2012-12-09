@@ -1,4 +1,4 @@
-function [model] = init_params(data, K, V, p, option, phase)
+function [model] = init_params(data, K, V, p, option, phase, epsilon, svmcval)
 
 % Random Initialization of model and variational parameters
 
@@ -15,7 +15,7 @@ if(option>=4)
     elseif(option==8) % DSLDA-NSLT2
         model.epsilon = 0.0000000001;
     else
-        model.epsilon = 0.80;  %% weight of supervised topics
+        model.epsilon = epsilon;  %% weight of supervised topics
     end
     model.alpha1  = randind*ones(1,model.k1)/model.k1;   %% the supervised topics are shared across DSLDA and DSLDA with no shared latent topic
     
@@ -58,14 +58,14 @@ end
 % nth element is of dimension length(windex{n})*K
 
 
-model.MINVALUE = 0.0000000000000000000000001;
+model.MINVALUE = 1e-30;
 model.phase    = phase;
 model.option   = option;
 
 if(option>=3)
     model.Y   = data.Y;
-    model.C2  = 0.1;
-    model.C1  = 0.1;
+    model.C2  = svmcval;
+    model.C1  = 1;
     model.mu  = randind*zeros(model.N,model.Y);   % N*Y  dual variables // zero because we have no idea of the duals right now
     model.eta = randind*rand(model.Y,model.K);   % Y*K  svm weights
 end

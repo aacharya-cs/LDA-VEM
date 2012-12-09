@@ -1,4 +1,4 @@
-function [] = mainfile_confdata (MAXCOUNT, MaxFun, MAXESTEPITER, MAXMSTEPITER, filename, p1, p2, p3, k2, option, troption, svmoptionval, svmcval, minvtopic, pathname, otherindex, numexp, K1, T, DSLDAoption)
+function [] = mainfile_confdata (MAXCOUNT, MaxFun, MAXESTEPITER, MAXMSTEPITER, filename, p1, p2, p3, k2, option, troption, svmoptionval, svmcval, minvtopic, pathname, otherindex, numexp, K1, T, DSLDAoption, epsilon)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % % % file for simulating synthetic data and checking the performance of the model on the same
@@ -20,6 +20,10 @@ function [] = mainfile_confdata (MAXCOUNT, MaxFun, MAXESTEPITER, MAXMSTEPITER, f
 % % % svmcval: value of the margin error penalizer term c in svm
 % % % pathname: path to the saved files of the form "<conference name>_train.mat" and "<conference name>_test.mat"
 % % % otherindex: any string that distinguishes the current run from others
+numexp: experiment number
+K1:      higher level truncation 
+T:       lower level truncation , 
+DSLDAoption: 0 for NPLDA with su, epsilon
 % % %%%%%%%%%%%
 % % output: saved in savefilename -- look for savefilename towards end of the code
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -95,6 +99,8 @@ trperfDSLDAOSST = [];
 testperfDSLDAOSST = [];
 trperfmedLDAova = [];
 testperfmedLDAova = [];
+trperfNPDSLDA = [];
+testperfNPDSLDA = [];
 
 %% get the data in proper format
 [trdata, testdata, selindex, classnames, MCMacc] = get_confdata(pathname, p1, p2, p3, filename, k2, minvtopic);
@@ -111,22 +117,22 @@ disp('*************** SVM starts ****************');
 [svmperf] = getLiblinearperf([], selindex, classnames, svmoptionval, svmcval);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% disp('*************** medLDA-OVA starts ****************');
-% %% run medLDA in one-vs-all setting (with the same training and test data)
-% medLDAovaprobassign = zeros(length(testdata.classlabels),trdata.Y);
-% for i=1:trdata.Y
-%    i
-%    [trdataova, testdataova] = get_medLDAovadata(trdata, testdata, i);
-%    [trmodelmedLDAova{i}, trperfmedLDAova{i}] = variational_EM(trdataova, MAXCOUNT, MAXESTEPITER, MAXMSTEPITER, MaxFun, p, [], 3, 1, []);
-%    if(troption==1)  %% test on training data
-%        testdata = trdata;
-%    end
-%    [testmodelmedLDAova{i}, testperfmedLDAova{i}, medLDAovaprobassign(:,i)] = InferenceOnTest(trmodelmedLDAova{i}, testdataova, MAXESTEPITER, 3, p);
-% end
-% [~, tempacc] = max(medLDAovaprobassign, [], 2);
-% testperfmedLDAova{1}.multiclassaccuracy = mean(tempacc==testdata.classlabels);
-% testperfmedLDAova{1}.multiclassaccuracy 
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+disp('*************** medLDA-OVA starts ****************');
+%% run medLDA in one-vs-all setting (with the same training and test data)
+medLDAovaprobassign = zeros(length(testdata.classlabels),trdata.Y);
+for i=1:trdata.Y
+   i
+   [trdataova, testdataova] = get_medLDAovadata(trdata, testdata, i);
+   [trmodelmedLDAova{i}, trperfmedLDAova{i}] = variational_EM(trdataova, MAXCOUNT, MAXESTEPITER, MAXMSTEPITER, MaxFun, p, [], 3, 1, [], epsilon);
+   if(troption==1)  %% test on training data
+       testdata = trdata;
+   end
+   [testmodelmedLDAova{i}, testperfmedLDAova{i}, medLDAovaprobassign(:,i)] = InferenceOnTest(trmodelmedLDAova{i}, testdataova, MAXESTEPITER, 3, p);
+end
+[~, tempacc] = max(medLDAovaprobassign, [], 2);
+testperfmedLDAova{1}.multiclassaccuracy = mean(tempacc==testdata.classlabels);
+testperfmedLDAova{1}.multiclassaccuracy 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % disp('*************** NPDSLDA starts ****************');
 % %% run NPDSLDA (with the same training and test data)
@@ -165,40 +171,39 @@ disp('*************** SVM starts ****************');
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
-% disp('*************** DSLDA starts ****************');
-% %% run DSLDA (with the same training and test data)
-% [trmodel, trperf] = variational_EM(trdata, MAXCOUNT, MAXESTEPITER, MAXMSTEPITER, MaxFun, p, [], 4, 1, []);
-% if(troption==1)  %% test on training data
-%    testdata = trdata;
-% end
-% [testmodel, testperf] = InferenceOnTest(trmodel, testdata, MAXESTEPITER, 4, p);
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% % % 
-%% disp('*************** DSLDA-OSST starts ****************');
-% % %% run labeled LDA with class labels (with the same training and test data)
-% % [trmodelDSLDAOSST, trperfDSLDAOSST] = variational_EM (trdata, MAXCOUNT, MAXESTEPITER, MAXMSTEPITER, MaxFun, p, [], 7, 1, []);
-% % if(troption==1)  %% test on training data
-% %   testdata = trdata;
-% % end
-% % [testmodelDSLDAOSST, testperfDSLDAOSST] = InferenceOnTest (trmodelDSLDAOSST, testdata, MAXESTEPITER, 7, p);
-% % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% % disp('*************** DSLDA-NSLT1 starts ****************');
-% % %%run labeled LDA with class labels (with the same training and test data)
-% % [trmodelDSLDANSLT1, trperfDSLDANSLT1] = variational_EM(trdata, MAXCOUNT, MAXESTEPITER, MAXMSTEPITER, MaxFun, p, [], 5, 1, []);
-% % if(troption==1)  %% test on training data
-% %    testdata = trdata;
-% % end
-% % [testmodelDSLDANSLT1, testperfDSLDANSLT1] = InferenceOnTest(trmodelDSLDANSLT1, testdata, MAXESTEPITER, 5, p);
-% % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% % 
+disp('*************** DSLDA starts ****************');
+%% run DSLDA (with the same training and test data)
+[trmodel, trperf] = variational_EM(trdata, MAXCOUNT, MAXESTEPITER, MAXMSTEPITER, MaxFun, p, [], 4, 1, [], epsilon);
+if(troption==1)  %% test on training data
+   testdata = trdata;
+end
+[testmodel, testperf] = InferenceOnTest(trmodel, testdata, MAXESTEPITER, 4, p);
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% 
+disp('*************** DSLDA-OSST starts ****************');
+%% run labeled LDA with class labels (with the same training and test data)
+[trmodelDSLDAOSST, trperfDSLDAOSST] = variational_EM (trdata, MAXCOUNT, MAXESTEPITER, MAXMSTEPITER, MaxFun, p, [], 7, 1, [], epsilon);
+if(troption==1)  %% test on training data
+  testdata = trdata;
+end
+[testmodelDSLDAOSST, testperfDSLDAOSST] = InferenceOnTest (trmodelDSLDAOSST, testdata, MAXESTEPITER, 7, p);
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+disp('*************** DSLDA-NSLT1 starts ****************');
+%%run labeled LDA with class labels (with the same training and test data)
+[trmodelDSLDANSLT1, trperfDSLDANSLT1] = variational_EM(trdata, MAXCOUNT, MAXESTEPITER, MAXMSTEPITER, MaxFun, p, [], 5, 1, [], epsilon);
+if(troption==1)  %% test on training data
+   testdata = trdata;
+end
+[testmodelDSLDANSLT1, testperfDSLDANSLT1] = InferenceOnTest(trmodelDSLDANSLT1, testdata, MAXESTEPITER, 5, p);
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 disp('*************** MedLDA-MTL starts ****************');
 %% run medLDA with all the classes together (with the same training and test data)
-[trmodelmedLDA, trperfmedLDA] = variational_EM(trdata, MAXCOUNT, MAXESTEPITER, MAXMSTEPITER, MaxFun, p, [], 3, 1, []);
+[trmodelmedLDA, trperfmedLDA] = variational_EM(trdata, MAXCOUNT, MAXESTEPITER, MAXMSTEPITER, MaxFun, p, [], 3, 1, [], epsilon);
 if(troption==1)  %% test on training data
    testdata = trdata;
 end
 [testmodelmedLDA, testperfmedLDA] = InferenceOnTest(trmodelmedLDA, testdata, MAXESTEPITER, 3, p);
-testperfmedLDA.multiclassacc
 % % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % % 
 % % %% modify this pathname and filename if you are running on/off condor
@@ -220,7 +225,7 @@ testperfmedLDA.multiclassacc
 % % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % % 
 % % %disp('SVM MedLDA-MTL, DSLDA-OSST, DSLDA-NSLT, DSLDA, NPDSLDA');
-% % svmacc = sum(diag(svmperf.confmat_test))/sum(sum(svmperf.confmat_test));
+svmacc = sum(diag(svmperf.confmat_test))/sum(sum(svmperf.confmat_test));
 % % 
 % % 
 % % fp = fopen('results_in_short.txt','w+');
@@ -248,13 +253,13 @@ testperfmedLDA.multiclassacc
 % % A = [testperf.multiclassacc testperf.wacc testperf.binacc(end)];
 % % A;
 % % 
-B = [MCMacc*100 svmacc*100 testperfNPDSLDA.multiclassacc]; % testperfmedLDAova{1}.multiclassaccuracy*100]; 
+B = [MCMacc*100 svmacc*100 testperfmedLDAova{1}.multiclassaccuracy*100];% testperfNPDSLDA.multiclassacc]; % ]; 
 B = [B testperfmedLDA.multiclassacc];
 B = [B testperfDSLDAOSST.multiclassacc]; 
 B = [B testperfDSLDANSLT1.multiclassacc testperf.multiclassacc];
 % % 
-% % disp('MCM, SVM, OVA, MTL, OSST, NSLT, DSLDA');
-% % B
+disp('MCM, SVM, OVA, MTL, OSST, NSLT, DSLDA');
+B'
 % %  
 % % % str = ['NPDSLDA multiacc: ' num2str(testperfNPDSLDA.multiclassacc) ' F: ' num2str(testperfNPDSLDA.wacc')];% ' binacc: ' num2str(testperf.binacc')];
 % % % fprintf(fp, '%s\n', str);

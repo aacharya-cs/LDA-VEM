@@ -23,7 +23,7 @@ function [] = mainfile_ayahoo (MAXCOUNT, MaxFun, MAXESTEPITER, MAXMSTEPITER, fil
 % output: saved in savefilename -- look for savefilename towards end of the code
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% example input:
-%% mainfile_ayahoo (4, 4, 10, 10, 'ayahoo_classname.txt', 0.2, 0.2, 50, 4, 1, 4, 100, '/lusr/u/ayan/Documents//DSLDA_SDM/ayahoo_files/', '1sttry', 0);
+%% mainfile_ayahoo (4, 4, 10, 10, 'ayahoo_classname.txt', 0.2, 0.2, 50, 4, 1, 4, 100, '/lusr/u/ayan/Documents/DSLDA_SDM/ayahoo_files/', '1sttry', 0);
 %% mainfile_ayahoo (6, 3, 5, 5, 'ayahoo_classname.txt', 0.5, 0.5, 0.25, 100, 4, 0, 4, 1, '/lusr/u/ayan/MLDisk/ayahoo_files/', '1sttry', 2);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 

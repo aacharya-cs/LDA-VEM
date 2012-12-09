@@ -3,7 +3,7 @@ function [boolnum] = compareval(a, b)
 %   Detailed explanation goes here
 
 temp = (abs(a-b)/abs(a));
-if(a>=b ||temp<0.00000001)
+if(a>=b ||temp<0.0000001)
     boolnum=1;
 else
     boolnum=0;

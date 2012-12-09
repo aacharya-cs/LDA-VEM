@@ -1,4 +1,4 @@
-function [] = mainfile_confdata (MAXCOUNT, MaxFun, MAXESTEPITER, MAXMSTEPITER, filename, p1, p2, p3, k2, option, troption, svmoptionval, svmcval, minvtopic, pathname, otherindex, numexp, K1, T)
+function [] = mainfile_confdata (MAXCOUNT, MaxFun, MAXESTEPITER, MAXMSTEPITER, filename, p1, p2, p3, k2, option, troption, svmoptionval, svmcval, minvtopic, pathname, otherindex, numexp, K1, T, DSLDAoption)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % % % file for simulating synthetic data and checking the performance of the model on the same
@@ -24,14 +24,14 @@ function [] = mainfile_confdata (MAXCOUNT, MaxFun, MAXESTEPITER, MAXMSTEPITER, f
 % % output: saved in savefilename -- look for savefilename towards end of the code
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% example input:
-%% mainfile_confdata (5, 5, 5, 5, 'conferencenames.txt', 0.1, 0.1, 1, 50, 4, 0, 4, 10, 4, '/home/ayan/Dropbox/DSLDA_SDM/forconfdata/', '1sttry', 1, 100, 40);
-%% mainfile_confdata (5, 5, 5, 5, 'conferencenames.txt', 0.1, 0.1, 1, 50, 4, 1, 4, 10, 4, '/home/ayan/Dropbox/DSLDA_SDM/forconfdata/', '1sttry', 1, 100, 50);
+%% mainfile_confdata (5, 5, 5, 5, 'conferencenames.txt', 0.1, 0.1, 1, 50, 4, 0, 4, 10, 4, '/lusr/u/ayan/Documents/DSLDA_SDM/forconfdata/', '1sttry', 1, 100, 40);
+%% mainfile_confdata (5, 5, 5, 5, 'conferencenames.txt', 0.1, 0.1, 1, 50, 4, 1, 4, 10, 4, '/lusr/u/ayan/Documents/DSLDA_SDM/forconfdata/', '1sttry', 1, 100, 50);
 %% K1 > T
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %% ///v/filer4b/v35q001/ayan/Documents/ONRATLCODE/mccfiles/savedfiles/Ayans/ayahoo_files/
 
-format long;
+format longG;
 warning('off');
 clc;
 
@@ -52,11 +52,11 @@ if(isdeployed)
 end
 
 if(~isdeployed)
-    addpath(genpath('/home/ayan/Dropbox/DSLDA_SDM/medlda/'));
-    addpath(genpath('/home/ayan/Dropbox/DSLDA_SDM/liblinear-1.92/'));
-    addpath(genpath('/home/ayan/Dropbox/DSLDA_SDM/forconfdata/'));
-    addpath(genpath('/home/ayan/Dropbox/DSLDA_SDM/siftpp/'));
-    addpath(genpath('/home/ayan/Dropbox/DSLDA_SDM/NPDSLDA/'));
+    addpath(genpath('/lusr/u/ayan/Documents/DSLDA_SDM/medlda/'));
+    addpath(genpath('/lusr/u/ayan/Documents/DSLDA_SDM/liblinear-1.92/'));
+    addpath(genpath('/lusr/u/ayan/Documents/DSLDA_SDM/forconfdata/'));
+    addpath(genpath('/lusr/u/ayan/Documents/DSLDA_SDM/siftpp/'));
+    addpath(genpath('/lusr/u/ayan/Documents/DSLDA_SDM/NPDSLDA/'));
         %% these C++ files should be compiled first
     mex sum_phi.cpp;
     mex update_beta_cpp.cpp;
@@ -131,27 +131,50 @@ disp('*************** SVM starts ****************');
 disp('*************** NPDSLDA starts ****************');
 %% run NPDSLDA (with the same training and test data)
 
-[trmodelNPDSLDA, trperfNPDSLDA] = variational_EM_NPDSLDA(trdata, MAXCOUNT, MAXESTEPITER, MAXMSTEPITER, MaxFun, p, K1, T);
+[trmodelNPDSLDA, trperfNPDSLDA] = variational_EM_NPDSLDA(trdata, MAXCOUNT, MAXESTEPITER, MAXMSTEPITER, MaxFun, p, K1, T, DSLDAoption);
 trperfNPDSLDA.multiclassacc
 if(troption==1)  %% test on training data
    testdata = trdata;
 end
-[testmodelNPDSLDA, testperfNPDSLDA] = InferenceOnTest_NPDSLDA(trmodelNPDSLDA, testdata, MAXESTEPITER);
+%[testmodelNPDSLDA, testperfNPDSLDA] = InferenceOnTest_NPDSLDA(trmodelNPDSLDA, testdata, MAXESTEPITER, option);
+%testperfNPDSLDA.multiclassacc
+%% LDA equivalent to HDP
+[alpha, lambda] = hdp_to_lda(trmodelNPDSLDA);
+%% order of supervised and latent topics swapped
+if(DSLDAoption==1)
+    trmodelNPDSLDA.alpha1 = trmodelNPDSLDA.uzero;
+    trmodelNPDSLDA.alpha2 = alpha;
+    lambda = [lambda(trmodelNPDSLDA.K1+1:end,:); lambda(1:trmodelNPDSLDA.K1,:)];
+    trmodelNPDSLDA.log_beta = log(lambda);
+    trmodelNPDSLDA.eta = [trmodelNPDSLDA.r(:,trmodelNPDSLDA.K1+1:end) trmodelNPDSLDA.r(:,1:trmodelNPDSLDA.K1)];
+    trmodelNPDSLDA.k2 = trmodelNPDSLDA.K1;
+    trmodelNPDSLDA.k1 = trmodelNPDSLDA.K2;
+    trmodelNPDSLDA.K  = (trmodelNPDSLDA.k1+trmodelNPDSLDA.k2);
+    [testmodelNPDSLDA, testperfNPDSLDA] = InferenceOnTest(trmodelNPDSLDA, testdata, MAXESTEPITER, 4, p);
+else
+    trmodelNPDSLDA.alpha = alpha;
+    trmodelNPDSLDA.log_beta = log(lambda);
+    trmodelNPDSLDA.eta = trmodelNPDSLDA.r;
+    trmodelNPDSLDA.K = trmodelNPDSLDA.K1;
+    [testmodelNPDSLDA, testperfNPDSLDA] = InferenceOnTest(trmodelNPDSLDA, testdata, MAXESTEPITER, 3, p);
+end
+%% swapping done
+% % [testmodelNPDSLDA, testperfNPDSLDA] = InferenceOnTest(trmodelNPDSLDA, testdata, MAXESTEPITER, 4, p);
 testperfNPDSLDA.multiclassacc
 100*MCMacc
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
-disp('*************** DSLDA starts ****************');
-%% run DSLDA (with the same training and test data)
-[trmodel, trperf] = variational_EM(trdata, MAXCOUNT, MAXESTEPITER, MAXMSTEPITER, MaxFun, p, [], 4, 1, []);
-if(troption==1)  %% test on training data
-   testdata = trdata;
-end
-[testmodel, testperf] = InferenceOnTest(trmodel, testdata, MAXESTEPITER, 4, p);
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% % 
-disp('*************** DSLDA-OSST starts ****************');
+% disp('*************** DSLDA starts ****************');
+% %% run DSLDA (with the same training and test data)
+% [trmodel, trperf] = variational_EM(trdata, MAXCOUNT, MAXESTEPITER, MAXMSTEPITER, MaxFun, p, [], 4, 1, []);
+% if(troption==1)  %% test on training data
+%    testdata = trdata;
+% end
+% [testmodel, testperf] = InferenceOnTest(trmodel, testdata, MAXESTEPITER, 4, p);
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% % % 
+%% disp('*************** DSLDA-OSST starts ****************');
 % % %% run labeled LDA with class labels (with the same training and test data)
 % % [trmodelDSLDAOSST, trperfDSLDAOSST] = variational_EM (trdata, MAXCOUNT, MAXESTEPITER, MAXMSTEPITER, MaxFun, p, [], 7, 1, []);
 % % if(troption==1)  %% test on training data
@@ -202,7 +225,7 @@ disp('*************** DSLDA-OSST starts ****************');
 % % dirdate = date;
 % % dirdate = regexprep(dirdate, '-', '_');
 % % dirname = ['/lusr/u/ayan/MLDisk/confdata_' dirdate];
-% % %dirname = ['//home/ayan/Dropbox/DSLDA_SDM/confdata_' dirdate];
+% % %dirname = ['//lusr/u/ayan/Documents/DSLDA_SDM/confdata_' dirdate];
 % % if(exist(dirname, 'dir')==0)
 % %     system(['mkdir ' dirname]);
 % % end

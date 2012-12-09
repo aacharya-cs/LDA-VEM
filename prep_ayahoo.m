@@ -5,7 +5,7 @@ function [trdata, testdata, selindex, classnames, MCMacc] = prep_ayahoo(pathname
 %% p1: percentage or number of instances from the source data in training
 %% p2: percentage or number of instances from the target data in training
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
+pathname
 classnames   = textread(classfilename,'%s\n');
 for i=1:size(classnames,1)-1
     source_class{i} = classnames{i};

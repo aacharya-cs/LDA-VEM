@@ -29,10 +29,10 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 {
     const mxArray *model, *data;
     mxArray *windex, *wcount, *zeta;
-    double  *Esticks, *Elogbeta;
+    double  *Esticks, *Elogbeta, *dmu, *r, *classlabels, *sumzeta, *nwordspdoc;
     double  *smallphi, *zetai, *tmp, *windexi, *wcounti, *count2;
-    double  minval, value1, value2;
-    int     *dims, N, K1, K2, T, V, i, t, k1, w, tempind, ndistWords;
+    double  minval, value1, value2, value3;
+    int     *dims, N, K1, K2, T, V, i, t, k1, w, y, Y, tempind, ndistWords, phase;
     
     model = prhs[0];
     data  = prhs[1];
@@ -42,16 +42,23 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
     K2     = (int)mxGetScalar(mxGetField(model,0,"K2"));
     N      = (int)mxGetScalar(mxGetField(model,0,"N"));
     V      = (int)mxGetScalar(mxGetField(model,0,"V"));
+    phase  = (int)mxGetScalar(mxGetField(model,0,"phase"));
     minval = (double)mxGetScalar(mxGetField(model,0,"MINVALUE"));
     
     windex        = mxGetField(data,0,"windex");
     wcount        = mxGetField(data,0,"wcount");
     zeta          = mxGetField(model,0,"zeta");
+    sumzeta       = (double*)mxGetPr(mxGetField(model,0,"sumzeta"));
+    nwordspdoc    = (double*)mxGetPr(mxGetField(data,0,"nwordspdoc"));
+    classlabels   = (double*)mxGetPr(mxGetField(data,0,"classlabels"));
     Esticks       = (double*)mxGetPr(prhs[2]); // Eq[log(\beta)]
     Elogbeta      = (double*)mxGetPr(prhs[3]); // psi(\lambda) - psi(\sum_{v=1}^{V} \lambda)
-    count2        = (double*)mxGetPr(prhs[4]);
+    count2        = (double*)mxGetPr(prhs[4]); // counter for controlling initialization
     
-    //mexPrintf("count2: %d\n", (int)count2[0]);
+    if(phase==1)
+    {// use the dual variable only in training phase; no dual variable in test phase
+        dmu     = (double*)mxGetPr(mxGetField(model,0,"dmu"));
+    }
     
     dims      = Malloc(int,3);
     *dims     = N;
@@ -61,7 +68,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
     smallphi  = (double*)mxGetPr(plhs[0]); // smallphi_{itk1}
     free(dims);
     
-    for (i=0; i<N; i++)               // loop over documents
+    for (i=0; i<N; i++)                    // loop over documents
     {
         zetai   = (double*)mxGetPr(mxDuplicateArray (mxGetCell (zeta, i)));     // zeta_{i} double array
         windexi = (double*)mxGetPr(mxDuplicateArray (mxGetCell (windex, i)));   // pointer to windex{i}
@@ -80,16 +87,25 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
             for (k1=0; k1<K1; k1++)   // loop over topics (higher level truncation)
             {
                 value1 = 0;
+                value3 = 0;
+                if(phase==1 && (int)classlabels[i]>=1)   // use the dual variable only in training phase only when label is present; no dual variable in test phase;
+                {
+                    for (y=0; y<Y; y++)
+                    {
+                        value3 = value3 + dmu[y*N+i]*(r[k1*Y+ (int)classlabels[i]-1] - r[k1*Y+y]);
+                    }
+                    value3 =  value3*sumzeta[i+t*N]/nwordspdoc[i];
+                }
                 for (w=0; w<ndistWords; w++) // loop over (distinct) words
                 {
                     tempind = k1 + ((int)(windexi[w])-1)*K1;
                     value1  = value1 + wcounti[w]*zetai[w+t*ndistWords]*Elogbeta[tempind];
                 }
                 /*if((int)count2[0]<3)
-                    value2  = 0;
-                else*/
-                    value2  = Esticks[k1];
-                *(tmp+k1) = (value1 + value2);
+                 * value2  = 0;
+                 * else*/
+                value2  = Esticks[k1];
+                *(tmp+k1) = (value1 + value2 + value3);
                 logsum    = log_sum(*(tmp+k1),logsum);
             }
             // conversion from log space to real number

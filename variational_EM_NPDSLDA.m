@@ -1,11 +1,11 @@
-function [model, perfval] = variational_EM_NPDSLDA (data, MAXCOUNT, MAXESTEPITER, MAXMSTEPITER, MaxFun,  p, K1, T)
+function [model, perfval] = variational_EM_NPDSLDA (data, MAXCOUNT, MAXESTEPITER, MAXMSTEPITER, MaxFun,  p, K1, T, option)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % main code for running variational EM on NPDSLDA model
 % @ Ayan Acharya, Date: 11.07.2012
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-[model, data] = init_params_NPDSLDA(data, K1, T);
+[model, data] = init_params_NPDSLDA(data, K1, T, option);
 countVEM = 1;
 maxvalue = -1e50;
 
@@ -15,12 +15,12 @@ while (countVEM<=MAXCOUNT)
     countVEM
     
     % %     if(countVEM>1 && model.option==3)
-    % %         maxvalue   = likelihood_NPDSLDA(model, data);
+    % %         maxvalue   = likelihood_NPDSLDA(model, data, option);
     % %     end
     
     %% E step
-    model    = E_step_NPDSLDA(model,data, MAXESTEPITER, maxvalue, countVEM);
-%     value    = likelihood_NPDSLDA(model, data);
+    model    = E_step_NPDSLDA(model,data, MAXESTEPITER, maxvalue, countVEM, option);
+%     value    = likelihood_NPDSLDA(model, data, option);
 %     
 %     %%for checking if lower bound increases after each iteration; useful for debugging -- should be commented out to save time while running experiments
 %     if (compareval(value, maxvalue))
@@ -30,8 +30,8 @@ while (countVEM<=MAXCOUNT)
 %     end
     
     %% M step
-    model    = M_step_NPDSLDA(model,data, MaxFun, maxvalue);
-%     value    = likelihood_NPDSLDA(model, data);
+    model    = M_step_NPDSLDA(model,data, MaxFun, maxvalue, option);
+%     value    = likelihood_NPDSLDA(model, data, option);
 %     
 %     if (compareval(value, maxvalue))
 %         maxvalue = value;
@@ -44,7 +44,7 @@ end
 
 
 % calculate the accuracy on the training set
-[accval, confmat] = cal_accuracy_NPDSLDA(model, data);
+[accval, confmat] = cal_accuracy_NPDSLDA(model, data, option);
 
 perfval.accval  = accval;
 perfval.confmat = confmat;

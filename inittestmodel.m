@@ -7,8 +7,8 @@ testmodel.V   = model.V;
 %% model parameters copied from the model obtained in training
 
 if(option>=4)
-    testmodel.k1      = data.k1;
-    testmodel.k2      = data.k2;
+    testmodel.k1      = model.k1;
+    testmodel.k2      = model.k2;
     testmodel.epsilon = model.epsilon;
     testmodel.alpha1  = model.alpha1;
     testmodel.alpha2  = model.alpha2;

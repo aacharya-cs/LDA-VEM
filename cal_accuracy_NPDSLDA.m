@@ -1,8 +1,12 @@
-function [F_score, confmat, probassign, binacc] = cal_accuracy_NPDSLDA(model, data)
+function [F_score, confmat, probassign, binacc] = cal_accuracy_NPDSLDA(model, data, option)
 
 probassign = [];
-temp  = model.sumzeta;
-temp  = temp./repmat(data.nwordspdoc,1,(model.T+model.K2));
+temp  = model.ss_features;
+if(option==1)
+    temp  = temp./repmat(data.nwordspdoc,1,(model.K1+model.K2));
+else
+    temp  = temp./repmat(data.nwordspdoc,1,model.K1);
+end
 temp2 = temp*model.r'; %% N*Y
 [~,ind] = max(temp2,[],2);
 

@@ -28,6 +28,7 @@ double log_sum(double log_a, double log_b)
 void update_phi_n(mxArray *retptr, double *sstopicwordptr, double *sstopicptr, const mxArray *phi_n, const double *windexn, const double *wcountn, const mxArray *model, const mxArray *data, const double *psigammaptr, const int n, const int phase, const double *annotations, int option)
 {
     int ndistWords, nK, k1, k2, V, N, tempind, i, j, y, C2, Y; // number of words, maximum number of topics, maximum number of observed topics
+    double logsum1, logsum2, minval, val, epsilon;
     double logsum, minval, val, epsilon;
     mxArray *tmp;
     double *tmpptr, *tmp1, *log_beta, *mu, *eta, *classlabels;
@@ -79,7 +80,8 @@ void update_phi_n(mxArray *retptr, double *sstopicwordptr, double *sstopicptr, c
     //mexPrintf("\t %d acajcjac %d",n, ndistWords);
     for (i=0; i<ndistWords; i++)
     {
-        logsum = 0;
+        logsum1 = 0;
+        logsum2 = 0;
         tmp1 = Malloc(double,nK);
         //mexPrintf("%d %d %d %d till here ok2\n", n, i, windexn[i], ndistWords);
         
@@ -96,78 +98,68 @@ void update_phi_n(mxArray *retptr, double *sstopicwordptr, double *sstopicptr, c
             }
             
             //mexPrintf("\n%d %d %d %d %f\n",n, i,j, nK, log_beta[tempind]);
-            if(option==3)
+            if(option>=3)
                 *(tmp1+j) = psigammaptr[j*N+n] + log_beta[tempind] + val;  // access (j,i) th element from gamma
-            
-            if(option>=4)
-            {
-                if(j<k1)
-                    *(tmp1+j) = psigammaptr[j*N+n] + log_beta[tempind] + log(epsilon) + val;  // access (j,i) th element from gamma
-                else
-                    *(tmp1+j) = psigammaptr[j*N+n] + log_beta[tempind] + log(1-epsilon) + val;  // access (j,i) th element from gamma
-            }
             
             if(option==1 || option==2)
                 *(tmp1+j) = psigammaptr[j*N+n] + log_beta[tempind];  // access (j,i) th element from gamma
             
-            //if condition says when to ignore phi's
-            if(phase==1 && option!=3) // only in training phase and not for medLDA
+            if(option!=1 && option!=3 && ((option>=4 && j<k1) || (option==2 && j<nK)))
             {
-                if(option==2 && *(annotations+j*N+n)==0);
-                else if (option==4 && j<k1 && *(annotations+j*N+n)==0);  // DSLDA
-                else if (option==5 && ((j<k1 && *(annotations+j*N+n)==0) || (j>=k1 && !(j>=lowlimit && j<=uplimit)))); // DSLDA-NSLT1
-                else if (option==8 && ((j<k1)|| (j>=k1 && !(j>=lowlimit && j<=uplimit)))); // DSLDA-NSLT2
-                else if (option==6 && ((j<k1 && *(annotations+j*N+n)==0) || (j>=k1 && !(j>=lowlimit && j<=uplimit)))); // DSLDA-NSLT-Ayan
-                else if (option==7 && (j<k1 && *(annotations+j*N+n)==0)); // DSLDA-OSST
-                else
-                    logsum    = log_sum(*(tmp1+j),logsum);
-                /*if(phase==1 && ((option==2 || (option==4 && j<k1)) && *(annotations+j*N+n)==0 || (option==5 && ((j<k1 && *(annotations+j*N+n)==0)||(!(j>=lowlimit && j<=uplimit)))) || )); // only in training phase*/
+                // supervised topics for options other than 1(LDA) and 3(MedLDA); for option 2(LLDA), all the topics are supervised, so we need an extra clause
+                if(phase==1)
+                {
+                    //if condition says when to ignore phi's for supervised topics in training phase
+                    if(option==2 && *(annotations+j*N+n)==0); // LLDA
+                    else if (option==4 && j<k1 && *(annotations+j*N+n)==0);  // DSLDA
+                    else if (option==5 && ((j<k1 && *(annotations+j*N+n)==0) || (j>=k1 && !(j>=lowlimit && j<=uplimit)))); // DSLDA-NSLT1
+                    else if (option==7 && (j<k1 && *(annotations+j*N+n)==0)); // DSLDA-OSST
+                    else
+                        logsum1    = log_sum(*(tmp1+j),logsum1);
+                }
+                else // in test phase
+                    logsum1    = log_sum(*(tmp1+j),logsum1);
             }
-            else
-                logsum    = log_sum(*(tmp1+j),logsum);
+            else  // unsupervised topics (training and test phases are identical)
+                logsum2    = log_sum(*(tmp1+j),logsum2);
         }
         
         // conversion from log space to real number
         for (int j=0; j<nK; j++)
         {
-            if(logsum - *(tmp1+j)>50)
-                tmpptr[j*ndistWords+i] = minval;                       //(j,i) th element
-            if(logsum - *(tmp1+j)<50)
-                tmpptr[j*ndistWords+i] = exp(*(tmp1+j)-logsum)+minval; //(j,i) th element
-            
-            if(phase==1 && option!=3) // only in training phase and not for medLDA or DSLDA-OSST
+            if(option!=1 && option!=3 && ((option>=4 && j<k1) || (option==2 && j<nK)))
             {
-                if(option==2 && *(annotations+j*N+n)==0)
-                    tmpptr[j*ndistWords+i] = 0;
-                else if (option==4 && j<k1 && *(annotations+j*N+n)==0)
-                    tmpptr[j*ndistWords+i] = 0;  // DSLDA
-                else if (option==7 && (j<k1 && *(annotations+j*N+n)==0))
-                    tmpptr[j*ndistWords+i] = 0; // DSLDA-OSST; zero out in training phase; don't zero out latent topics, will handle that through epsilon
-                else if (option==5 && ((j<k1 && *(annotations+j*N+n)==0) || (j>=k1 && !(j>=lowlimit && j<=uplimit))))
+                // supervised topics for options other than 1(LDA) and 3(MedLDA); for option 2(LLDA), all the topics are supervised, so we need an extra clause
+                if(phase==1)
                 {
-                    //mexPrintf("%d\t %d\t %f\n", n, j, *(annotations+j*N+n));
-                    tmpptr[j*ndistWords+i] = 0; // DSLDA-NSLT-Ray
+                    //if condition says when to ignore phi's for supervised topics in training phase
+                    if(option==2 && *(annotations+j*N+n)==0)
+                        tmpptr[j*ndistWords+i] = 0; // LLDA
+                    else if (option==4 && j<k1 && *(annotations+j*N+n)==0)
+                        tmpptr[j*ndistWords+i] = 0; // DSLDA
+                    else if (option==5 && ((j<k1 && *(annotations+j*N+n)==0) || (j>=k1 && !(j>=lowlimit && j<=uplimit))))
+                        tmpptr[j*ndistWords+i] = 0; // DSLDA-NSLT1
+                    else if (option==7 && (j<k1 && *(annotations+j*N+n)==0))
+                        tmpptr[j*ndistWords+i] = 0; // DSLDA-OSST
+                    else; // do nothing
                 }
-                else if (option==8 && ((j<k1) || (j>=k1 && !(j>=lowlimit && j<=uplimit)))) // DSLDA-NSLT2
-                {
-                    //mexPrintf("%d\t %d\t %f\n", n, j, *(annotations+j*N+n));
-                    tmpptr[j*ndistWords+i] = 0; // DSLDA-NSLT-Ray
-                }
-                else if (option==6 && ((j<k1 && *(annotations+j*N+n)==0) || (j>=k1 && !(j>=lowlimit && j<=uplimit))))
-                    tmpptr[j*ndistWords+i] = 0; // DSLDA-NSLT-Ayan
-                else; // do nothing
-                /*if(phase==1 && ((option==2 || (option==4 && j<k1)) && *(annotations+j*N+n)==0 || (option==5 && ((j<k1 && *(annotations+j*N+n)==0)||(!(j>=lowlimit && j<=uplimit))))))
-                 * tmpptr[j*ndistWords+i] = 0; */
+                if(logsum1 - *(tmp1+j)>100)
+                    tmpptr[j*ndistWords+i] = minval;                        //(j,i) th element
+                if(logsum1 - *(tmp1+j)<100)
+                    tmpptr[j*ndistWords+i] = epsilon*exp(*(tmp1+j)-logsum1)+minval; //(j,i) th element
             }
-            
-            
-            // special clause for DSLDA-NSLT2
-            if(phase==0 && option==8 && (j<k1))
-                tmpptr[j*ndistWords+i] = 0; // DSLDA-OSST; zero out in test phase
-            
+            else  // unsupervised topics
+            {
+                if(logsum2 - *(tmp1+j)>100)
+                    tmpptr[j*ndistWords+i] = minval;                        //(j,i) th element
+                if(logsum2 - *(tmp1+j)<100)
+                    if(option>=4)
+                        tmpptr[j*ndistWords+i] = (1-epsilon)*exp(*(tmp1+j)-logsum2)+minval; //(j,i) th element
+                    else
+                        tmpptr[j*ndistWords+i] = exp(*(tmp1+j)-logsum2)+minval; //(j,i) th element
+            }
         }
         free(tmp1);
-        // to be done -- renormalization -- not necessary though
     }
     
     // update sufficient statistics

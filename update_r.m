@@ -1,8 +1,14 @@
-function [model] = update_r(model, data, sumzeta)
+function [model] = update_r(model, data, option)
 
-cval         = model.C2/model.C1;
-option       = [' -s 4'  ' -c ' num2str(cval) ' -e 0.1'];
-trdata       = sumzeta./repmat(data.nwordspdoc,1,(model.T+model.K2));
+if(option==1)
+    nK = (model.K1+model.K2);
+else
+    nK = model.K1;
+end
+
+cval   = model.C2/model.C1;
+option = [' -s 4'  ' -c ' num2str(cval) ' -e 0.1'];
+trdata = model.ss_features./repmat(data.nwordspdoc,1,nK);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % % if(model.option~=5)
@@ -14,7 +20,7 @@ trdata       = sumzeta./repmat(data.nwordspdoc,1,(model.T+model.K2));
 % %     ind      = ind';
 % %     ind      = (ind(:))';
 % %     tempmat  = tempmat(:,ind);
-% %     
+% %
 % %     temp1    = temp(:,1:model.k1);  %% shared weights
 % %     temp2    = temp(:,model.k1+1:model.K2).*tempmat; %% weights for non-shared latent topics..zero padding is used for "other" classes
 % %     temp     = [temp1 temp2];
@@ -23,14 +29,13 @@ trdata       = sumzeta./repmat(data.nwordspdoc,1,(model.T+model.K2));
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %% for training only with labeled data
-ind = find(data.classlabels>0);
-svmtrlabels = data.classlabels(ind);
-svmtrdata = sparse(trdata(ind,:));
+ind          = find(data.classlabels>0);
+svmtrlabels  = data.classlabels(ind);
+svmtrdata    = sparse(trdata(ind,:));
 %% selection done
 
 trainedmodel = train(svmtrlabels, svmtrdata, option);
 [~, acc, ~]  = predict(svmtrlabels, svmtrdata, trainedmodel); % test the training data
-acc
 model.r      = trainedmodel.w;
 model.dmu    = trainedmodel.alpha;
 

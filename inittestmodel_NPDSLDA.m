@@ -1,4 +1,4 @@
-function [testmodel] = inittestmodel_NPDSLDA(trmodel, data)
+function [testmodel] = inittestmodel_NPDSLDA(trmodel, data, option)
 
 testmodel.N         = size(data.wcount,2);
 testmodel.V         = data.V;
@@ -36,18 +36,23 @@ for n=1:testmodel.N
     temp1 = temp1./repmat(temp2,1,size(temp1,2));
     testmodel.smallphi(n,:,:) = temp1;
     
-    temp3 = rand(max(size(data.windex{n})), testmodel.T);  
-    temp4 = rand(max(size(data.windex{n})), testmodel.K2); 
-    temp5 = [temp3 temp4];
-    temp5 = temp5./repmat(sum(temp5,2),1,(testmodel.T+testmodel.K2));
+    temp3 = rand(max(size(data.windex{n})), testmodel.T);
+    temp4 = rand(max(size(data.windex{n})), testmodel.K2);
+    if(option==1)
+        temp5 = [temp3 temp4];
+        temp5 = temp5./repmat(sum(temp5,2),1,(testmodel.T+testmodel.K2));
+    else
+        temp5 = [temp3];
+        temp5 = temp5./repmat(sum(temp5,2),1,(testmodel.T));
+    end
     testmodel.zeta{n} = temp5;
     %% for checking errors
     if(size(temp5,1)==1 && size(temp5,2)==1)
         n
         data.windex{n}'
         error('problem in init');
-    end   
+    end
 end
-testmodel.sumzeta  = sum_zeta(testmodel, data);
+testmodel.sumzeta  = sum_zeta(testmodel, data, option);
 
 end

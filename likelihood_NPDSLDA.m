@@ -1,4 +1,4 @@
-function [value] = likelihood_NPDSLDA(model, data)
+function [value] = likelihood_NPDSLDA(model, data, option)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 psimodmun  = psi(model.mun);
@@ -12,6 +12,24 @@ gammaln_mod_uzero = gammaln(mod_uzero);
 gammaln_mod_uzero(find(gammaln_mod_uzero==inf)) = 0;
 
 indzero = find(data.annotations==0);
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% initializing different terms for lower bound calculation
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+term1p  = 0;
+term2p  = 0;
+term3p  = 0;
+term4p  = 0;
+term5p  = 0;
+term6p  = 0;
+term7p  = 0;
+term8p  = 0;
+term9p  = 0;
+term10p = 0;
+term11p = 0;
+term12p = 0;
+term13p = 0;
+term14p = 0;
+term15p = 0;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %% term1
@@ -47,22 +65,27 @@ term54 = term53(1:end-1).*(psi(model.u) - psi(model.u + model.v));
 term5p = sum(term52+term54);
 
 %% term6
-term61 = sum(sum((model.sumzeta(:,1:model.T-1).*(log(1-model.epsilon) + psi(model.a) - psi(model.a+model.b)))));
-term62 = model.sumzeta(:,2:model.T);
-term62 = sum(sum((partial_sum(term62).*(psi(model.b) - psi(model.a + model.b)))));
-term63 = sum(sum((model.sumzeta(:,model.T+1:end).*(log(model.epsilon) + psimodmun - repmat(psi(sum(model.mun,2)),1,model.K2)))));
-term6p = term61+term62+term63;
+if(option==1)  %% for NPDSLDA
+    term61 = sum(sum((model.sumzeta(:,1:model.T-1).*(log(1-model.epsilon) + psi(model.a) - psi(model.a+model.b)))));
+    term62 = model.sumzeta(:,2:model.T);
+    term62 = sum(sum((partial_sum(term62).*(psi(model.b) - psi(model.a + model.b)))));
+    term63 = sum(sum((model.sumzeta(:,model.T+1:end).*(log(model.epsilon) + psimodmun - repmat(psi(sum(model.mun,2)),1,model.K2)))));
+    term6p = term61+term62+term63;
+else %% for NPLDA
+    term61 = sum(sum((model.sumzeta(:,1:model.T-1).*(psi(model.a) - psi(model.a+model.b)))));
+    term62 = model.sumzeta(:,2:model.T);
+    term62 = sum(sum((partial_sum(term62).*(psi(model.b) - psi(model.a + model.b)))));
+    term6p = term61+term62;
+end
+
 
 %% term8
-term81 = model.K2*(gammaln(sum(model.eta)) - sum(gammaln(model.eta)));
-term82 = model.lambda(model.K1+1:end,:);
-if(min(min(term82))<0)
-    ind = find(term82(model.K1+1:end,:)<0);
-    keyboard;
+if(option==1)  %% for NPDSLDA
+    term81 = model.K2*(gammaln(sum(model.eta)) - sum(gammaln(model.eta)));
+    term82 = model.lambda(model.K1+1:end,:);
+    term83 = (model.eta-1).*(sum(psi(term82),1) - repmat(sum(psi(sum(term82,2))),1, model.V));
+    term8p = (term81+sum(term83));
 end
-term83 = (model.eta-1).*(sum(psi(term82),1) - repmat(sum(psi(sum(term82,2))),1, model.V));
-term84 = sum(term83);
-term8p = (term81+term84);
 
 %% term9
 term91 = gammaln(model.u+model.v) - gammaln(model.u) - gammaln(model.v);
@@ -83,50 +106,66 @@ term113 = sum(sum((term111-1).*(psi(term111) - repmat(psi(sum(term111,2)),1,mode
 term11p = -(term112+term113);
 
 %% term12
-term121 = model.lambda(model.K1+1:end,:);
-term122 = sum(gammaln(sum(term121,2))) - sum(sum(gammaln(term121)));
-term123 = sum(sum((term121-1).*(psi(term121) - repmat(psi(sum(term121,2)),1,model.V))));
-term12p = -(term122+term123);
+if(option==1)  %% for NPDSLDA
+    term121 = model.lambda(model.K1+1:end,:);
+    term122 = sum(gammaln(sum(term121,2))) - sum(sum(gammaln(term121)));
+    term123 = sum(sum((term121-1).*(psi(term121) - repmat(psi(sum(term121,2)),1,model.V))));
+    term12p = -(term122+term123);
+end
 
 %% term13
 term13p = model.smallphi.*log(model.smallphi);
-ind     = find(isnan(term13p)==1);
-term13p(ind) = 0;
 term13p = -sum(sum(sum(term13p)));
 
 %% term14 and term7
 term14p = 0;
 term7p  = 0;
-for n=1:model.N    
+Eloglambda = [psi(model.lambda) - repmat(psi(sum(model.lambda,2)),1,model.V)];
+for n=1:model.N
     %% term7
-    term71 = model.zeta{n}(:,1:model.T)*squeeze(model.smallphi(n,:,:));
-    term72 = model.zeta{n}(:,model.T+1:end);
-    term73 = repmat(model.r(data.classlabels(n),:),data.Y,1);
-    for w=1:length(data.windex(n))
-        term7p = term7p + data.wcount{n}(w)*(term71(w,:)*(psi(model.lambda(1:model.K1,data.windex{n}(w))) - psi(sum(model.lambda(1:model.K1,:),2))));
-        term7p = term7p + data.wcount{n}(w)*(term72(w,:)*(psi(model.lambda(model.K1+1:end,data.windex{n}(w))) - psi(sum(model.lambda(model.K1+1:end,:),2))));
+    term71 = model.zeta{n}(:,1:model.T)*squeeze(model.smallphi(n,:,:)); %% \sum_{t}\zeta_{nmt}*\varphi_{ntk1} ..dimension M_{n} x K_{1}
+    if(option==1)
+        term72 = model.zeta{n}(:,model.T+1:end);                            %% ..dimension M_{n} x K_{2}
     end
+    term73 = repmat(model.r(data.classlabels(n),:),data.Y,1);
+    Mn = length(data.windex{n});
+    
+    for w=1:Mn
+        term711 = term71(w,:)*Eloglambda(1:model.K1,data.windex{n}(w)); %% \sum_{k_{1}}term71_{mk_{1}}*Eloglambda_{k_{1},w_{nm}} .. scalar
+        term7p  = term7p + data.wcount{n}(w)*term711;
+        if(option==1)
+            term712 = term72(w,:)*Eloglambda(model.K1+1:end,data.windex{n}(w)); %% \sum_{k_{2}}term72_{mk_{2}}*Eloglambda_{k_{2},w_{nm}} .. scalar
+            term7p  = term7p + data.wcount{n}(w)*term712;
+        end
+    end
+    
     if(model.phase==1)
-        term74  = (term73-model.r);
-        term74  = model.dmu(n,:)*term74;
-        term7p  = term7p + (1/data.nwordspdoc(n))*sum(term74.*model.sumzeta(n,:));
+        term74  = (term73-model.r);                  %% r(y_{n}) - r(y) .. dimension Y x (K_{1}+K_{2})
+        term74  = model.dmu(n,:)*term74;             %% dimension 1 x (K_{1}+K_{2})
+        term7p  = term7p + (1/data.nwordspdoc(n))*sum(term74.*model.ss_features(n,:));
     end
     
     %% term14
-    term141 = model.zeta{n}.*log(model.zeta{n}); 
-    ind     = find(isnan(term141)==1); 
-    term141(ind) = 0;
-    term14p = term14p + sum(sum(term141)); 
-    
+    term141 = data.wcount{n};
+    if(option==1) %% for NPDSLDA
+        term142 = repmat(term141',1,(model.T+model.K2)).*model.zeta{n}.*log(model.zeta{n});
+    else
+        term142 = repmat(term141',1,model.T).*model.zeta{n}.*log(model.zeta{n});
+    end
+    ind     = find(isnan(term142)==1);
+    term142(ind) = 0;
+    term14p = term14p + sum(sum(term142));  
 end
 term14p = -term14p;
 
 %% term15
-term151 = sum(gammaln(sum(model.mun,2))) - sum(sum(gammalnmodmun));
-term152 = (model.mun-1).*(psimodmun - repmat(psi(sum(model.mun,2)),1,model.K2));
-term152(indzero) = 0;
-term152 = sum(sum(term152));
-term15p = -(term151+term152);
+if(option==1)
+    term151 = sum(gammaln(sum(model.mun,2))) - sum(sum(gammalnmodmun));
+    term152 = (model.mun-1).*(psimodmun - repmat(psi(sum(model.mun,2)),1,model.K2));
+    term152(indzero) = 0;
+    term152 = sum(sum(term152));
+    term15p = -(term151+term152);
+end
 
 %% final value
 

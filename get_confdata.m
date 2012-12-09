@@ -114,7 +114,7 @@ MCMacc = maxnum/length(testdata.classlabels);
 
 
 %% for comparing with the code of onlineHDP
-converttoSLDA(trdata, testdata);
+%% converttoSLDA(trdata, testdata);
 
 %%getstat(trdata);
 

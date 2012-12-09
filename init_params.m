@@ -15,7 +15,7 @@ if(option>=4)
     elseif(option==8) % DSLDA-NSLT2
         model.epsilon = 0.0000000001;
     else
-        model.epsilon = 0.10;  %% weight of supervised topics
+        model.epsilon = 0.80;  %% weight of supervised topics
     end
     model.alpha1  = randind*ones(1,model.k1)/model.k1;   %% the supervised topics are shared across DSLDA and DSLDA with no shared latent topic
     

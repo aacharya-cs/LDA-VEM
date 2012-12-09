@@ -29,7 +29,6 @@ void update_phi_n(mxArray *retptr, double *sstopicwordptr, double *sstopicptr, c
 {
     int ndistWords, nK, k1, k2, V, N, tempind, i, j, y, C2, Y; // number of words, maximum number of topics, maximum number of observed topics
     double logsum1, logsum2, minval, val, epsilon;
-    double logsum, minval, val, epsilon;
     mxArray *tmp;
     double *tmpptr, *tmp1, *log_beta, *mu, *eta, *classlabels;
     double *nwordspdoc = mxGetPr(mxGetField(data,0,"nwordspdoc"));
